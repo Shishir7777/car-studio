@@ -1,71 +1,79 @@
 import React, { useRef, useState } from "react";
 
 export default function App() {
-  const canvasRef = useRef(null);
-
   const [bg, setBg] = useState("studio");
   const [bgColor, setBgColor] = useState("#eaeaea");
-  const [carImage, setCarImage] = useState(null);
+  const [carImages, setCarImages] = useState([]);
   const [loading, setLoading] = useState(false);
+  const canvasRefs = useRef([]);
 
-  async function handleImageUpload(file) {
+  async function handleImageUpload(files) {
     setLoading(true);
+    const fileArray = Array.from(files);
 
-    const formData = new FormData();
-    formData.append("image", file);
+    const processedImages = await Promise.all(
+      fileArray.map(async (file) => {
+        const formData = new FormData();
+        formData.append("image", file);
 
-    const response = await fetch("https://car-studio-71wv.onrender.com/remove-bg", {
-      method: "POST",
-      body: formData,
-    });
-
-    const blob = await response.blob();
-    const img = new Image();
-    img.src = URL.createObjectURL(blob);
-
-    img.onload = () => {
-      setCarImage(img);
-      draw(img);
-      setLoading(false);
-    };
-  }
-
-  function draw(img = carImage) {
-    if (!img) return;
-
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-
-    canvas.width = img.width;
-    canvas.height = img.height;
-
-    if (bg === "studio") ctx.fillStyle = "#f2f2f2";
-    if (bg === "dark") ctx.fillStyle = "#111";
-    if (bg === "sky") ctx.fillStyle = "#bcdcff";
-    if (bg === "custom") ctx.fillStyle = bgColor;
-
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(img, 0, 0);
-  }
-
-  async function saveToPhotos() {
-    const canvas = canvasRef.current;
-    canvas.toBlob(async (blob) => {
-      const file = new File([blob], "car-studio.png", { type: "image/png" });
-      if (navigator.share && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: "Car Studio",
+        const response = await fetch("https://car-studio-71wv.onrender.com/remove-bg", {
+          method: "POST",
+          body: formData,
         });
-      } else {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "car-studio.png";
-        a.click();
-        URL.revokeObjectURL(url);
-      }
-    }, "image/png");
+
+        const blob = await response.blob();
+        return new Promise((resolve) => {
+          const img = new Image();
+          img.src = URL.createObjectURL(blob);
+          img.onload = () => resolve(img);
+        });
+      })
+    );
+
+    setCarImages(processedImages);
+    setLoading(false);
+  }
+
+  function getBgColor() {
+    if (bg === "studio") return "#f2f2f2";
+    if (bg === "dark") return "#111";
+    if (bg === "sky") return "#bcdcff";
+    if (bg === "custom") return bgColor;
+  }
+
+  function drawAll() {
+    carImages.forEach((img, i) => {
+      const canvas = canvasRefs.current[i];
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.fillStyle = getBgColor();
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+    });
+  }
+
+  async function saveAll() {
+    for (let i = 0; i < carImages.length; i++) {
+      const canvas = canvasRefs.current[i];
+      await new Promise((resolve) => {
+        canvas.toBlob(async (blob) => {
+          const file = new File([blob], `car-studio-${i + 1}.png`, { type: "image/png" });
+          if (navigator.share && navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: `Car ${i + 1}` });
+          } else {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `car-studio-${i + 1}.png`;
+            a.click();
+            URL.revokeObjectURL(url);
+          }
+          resolve();
+        }, "image/png");
+      });
+    }
   }
 
   return (
@@ -75,7 +83,8 @@ export default function App() {
       <input
         type="file"
         accept="image/*"
-        onChange={(e) => handleImageUpload(e.target.files[0])}
+        multiple
+        onChange={(e) => handleImageUpload(e.target.files)}
       />
 
       <div style={{ marginTop: 10 }}>
@@ -95,20 +104,26 @@ export default function App() {
           />
         )}
 
-        <button onClick={() => draw()} disabled={!carImage} style={{ marginLeft: 8 }}>
-          Apply
+        <button onClick={drawAll} disabled={carImages.length === 0} style={{ marginLeft: 8 }}>
+          Apply to All
         </button>
 
-        <button onClick={saveToPhotos} disabled={!carImage} style={{ marginLeft: 8 }}>
-          Save to Photos
+        <button onClick={saveAll} disabled={carImages.length === 0} style={{ marginLeft: 8 }}>
+          Save All
         </button>
       </div>
 
-      {loading && <p>Processing image...</p>}
+      {loading && <p>Processing {`images`}...</p>}
 
-      <br />
-
-      <canvas ref={canvasRef} style={{ maxWidth: "100%", border: "1px solid #ccc" }} />
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 16 }}>
+        {carImages.map((_, i) => (
+          <canvas
+            key={i}
+            ref={(el) => (canvasRefs.current[i] = el)}
+            style={{ maxWidth: "300px", border: "1px solid #ccc" }}
+          />
+        ))}
+      </div>
     </div>
   );
 }
