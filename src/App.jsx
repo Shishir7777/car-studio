@@ -14,7 +14,7 @@ export default function App() {
     const formData = new FormData();
     formData.append("image", file);
 
-    const response = await fetch("https://car-studio.onrender.com/remove-bg", {
+    const response = await fetch("https://car-studio-71wv.onrender.com/remove-bg", {
       method: "POST",
       body: formData,
     });
