@@ -7,6 +7,26 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const canvasRefs = useRef([]);
 
+  function getBgColor() {
+    if (bg === "studio") return "#f2f2f2";
+    if (bg === "dark") return "#111";
+    if (bg === "sky") return "#bcdcff";
+    if (bg === "custom") return bgColor;
+  }
+
+  function drawImages(images, bgOverride) {
+    images.forEach((img, i) => {
+      const canvas = canvasRefs.current[i];
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.fillStyle = bgOverride || getBgColor();
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+    });
+  }
+
   async function handleImageUpload(files) {
     setLoading(true);
     const fileArray = Array.from(files);
@@ -32,26 +52,14 @@ export default function App() {
 
     setCarImages(processedImages);
     setLoading(false);
-  }
 
-  function getBgColor() {
-    if (bg === "studio") return "#f2f2f2";
-    if (bg === "dark") return "#111";
-    if (bg === "sky") return "#bcdcff";
-    if (bg === "custom") return bgColor;
+    setTimeout(() => {
+      drawImages(processedImages);
+    }, 100);
   }
 
   function drawAll() {
-    carImages.forEach((img, i) => {
-      const canvas = canvasRefs.current[i];
-      if (!canvas) return;
-      const ctx = canvas.getContext("2d");
-      canvas.width = img.width;
-      canvas.height = img.height;
-      ctx.fillStyle = getBgColor();
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0);
-    });
+    drawImages(carImages);
   }
 
   async function saveAll() {
@@ -113,7 +121,7 @@ export default function App() {
         </button>
       </div>
 
-      {loading && <p>Processing {`images`}...</p>}
+      {loading && <p>Processing images...</p>}
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 16 }}>
         {carImages.map((_, i) => (
