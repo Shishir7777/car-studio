@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 
 export default function App() {
   const [bg, setBg] = useState("studio");
@@ -27,6 +27,12 @@ export default function App() {
     });
   }
 
+  useEffect(() => {
+    if (carImages.length > 0) {
+      drawImages(carImages);
+    }
+  }, [carImages]);
+
   async function handleImageUpload(files) {
     setLoading(true);
     const fileArray = Array.from(files);
@@ -52,10 +58,6 @@ export default function App() {
 
     setCarImages(processedImages);
     setLoading(false);
-
-    setTimeout(() => {
-      drawImages(processedImages);
-    }, 100);
   }
 
   function drawAll() {
