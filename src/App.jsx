@@ -39,23 +39,33 @@ export default function App() {
     canvas.width = img.width;
     canvas.height = img.height;
 
-    // background
     if (bg === "studio") ctx.fillStyle = "#f2f2f2";
     if (bg === "dark") ctx.fillStyle = "#111";
     if (bg === "sky") ctx.fillStyle = "#bcdcff";
     if (bg === "custom") ctx.fillStyle = bgColor;
 
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // car (transparent png)
     ctx.drawImage(img, 0, 0);
   }
 
-  function download() {
-    const a = document.createElement("a");
-    a.download = "car-studio.png";
-    a.href = canvasRef.current.toDataURL();
-    a.click();
+  async function saveToPhotos() {
+    const canvas = canvasRef.current;
+    canvas.toBlob(async (blob) => {
+      const file = new File([blob], "car-studio.png", { type: "image/png" });
+      if (navigator.share && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: "Car Studio",
+        });
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "car-studio.png";
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    }, "image/png");
   }
 
   return (
@@ -89,8 +99,8 @@ export default function App() {
           Apply
         </button>
 
-        <button onClick={download} disabled={!carImage} style={{ marginLeft: 8 }}>
-          Download
+        <button onClick={saveToPhotos} disabled={!carImage} style={{ marginLeft: 8 }}>
+          Save to Photos
         </button>
       </div>
 
